@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:weather_application/google_maps.dart';
 import 'package:weather_application/services/shared_prefernces_services.dart';
 
 import 'services/network_service.dart';
@@ -96,8 +98,14 @@ class _LocationPageState extends State<LocationPage> {
                 stops: [0.0,0.47,1.0])
             ),
           child: SafeArea(
+            child: SingleChildScrollView(
+              child: ConstrainedBox( // Ensures Column takes up necessary space
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height, // Full screen height
+                  ),
+                  child: IntrinsicHeight(
               child: Column(
-            children: [
+                          children: [
               Container(
                 margin: EdgeInsets.all(16.0),
                 child: TextField(
@@ -108,7 +116,7 @@ class _LocationPageState extends State<LocationPage> {
                   ),
                   decoration: InputDecoration(
                     hintText: "Search Location",
-                    hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+                    hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
                     prefixIcon: Icon(Icons.search,color: Colors.black,),
                     filled: true,
                     fillColor: Colors.white,
@@ -130,20 +138,20 @@ class _LocationPageState extends State<LocationPage> {
                  isLoading=true;
                  setState(() {});
                  if( await isGpsServicesEnabled()){
-          if(await isLocationPermissionProvided()){
-          //       Step 2 :GET NEW GPS LOCATION
-          position =await Geolocator.getCurrentPosition(
+                        if(await isLocationPermissionProvided()){
+                        //       Step 2 :GET NEW GPS LOCATION
+                        position =await Geolocator.getCurrentPosition(
               locationSettings:LocationSettings());
-          // STEP 3:SAVE NEW LOCATION
-          await SharedPrefServices.saveLocation(
+                        // STEP 3:SAVE NEW LOCATION
+                        await SharedPrefServices.saveLocation(
               position!.latitude,
               position!.longitude);
-          print("latitude : ${position?.latitude ?? ''}");
-          print("longitude : ${position?.longitude ?? ''}");
-          isLoading=false;
-          setState(() {});
-          }
-          }
+                        print("latitude : ${position?.latitude ?? ''}");
+                        print("longitude : ${position?.longitude ?? ''}");
+                        isLoading=false;
+                        setState(() {});
+                        }
+                        }
                  },
 
                child: Container(
@@ -177,7 +185,7 @@ class _LocationPageState extends State<LocationPage> {
                    color: Colors.black54),),
                  ),
                ),
-             ),
+                           ),
               SizedBox(height: 20.0,),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -188,31 +196,73 @@ class _LocationPageState extends State<LocationPage> {
                   TextStyle(fontSize: 18.0,fontWeight: FontWeight.w500),)
                 ],
               ),
-              Spacer(),
+              SizedBox(height: 20.0,),
+              InkWell(
+                onTap: () async {
+                 LatLng? selectedPosition=await Navigator.of(context).push(MaterialPageRoute(builder:
+                     (context)=>GoogleMaps()  )) as LatLng?;
+                 if(selectedPosition != null){
+                     callWeatherApi(selectedPosition.latitude, selectedPosition.longitude);
+                 }else{
+                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                       content: Text("Please Select Valid Location")));
+                 }
+                },
+                child: Container(
+                  margin: EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2,),
+                      borderRadius: BorderRadius.circular(15.0)
+                  ),
+                  child: ListTile(
+                    leading: InkWell(
+                      onTap: (){},
+                        child: Icon(Icons.map,color: Colors.white,)),
+
+                    title: Text("Google Maps",
+                      style: TextStyle(fontSize: 20.0,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white),),
+                    subtitle: Text("Using GPS",style: TextStyle(
+                        fontSize: 13.0,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.black54),),
+                  ),
+                ),
+              ),
+
               Padding(
                 padding: const EdgeInsets.all(10.0),
                 child: ElevatedButton(
                     onPressed: () async {
-                      NetworkServices networkServices=NetworkServices();
-                      var responseModel = await networkServices.getForecastData(
-                          lat: position?.latitude,
-                          long: position?.longitude ,
-                        userInputLocation: _searchController.text,
-                      );
-                             // isLoading=false;
-                      if(responseModel.error!=null){
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content:Text("${responseModel.error?.message}")));
-                      }else{
-                        Navigator.of(context).pop(responseModel);
-                      }
-
-
-                    },
-                    child: Text("Submit")),
+                     callWeatherApi(position?.latitude, position?.longitude);
+                    },   child: Text("Submit")),
               ),
-            ],
-          )),),
-        );
+                          ],
+                        )),),
+    ))) );
+  }
+  callWeatherApi(double? latitude,double? longitude)async{
+    try {
+      NetworkServices networkServices = NetworkServices();
+      var responseModel = await networkServices
+          .getForecastData(
+        lat: latitude,
+        long: longitude,
+        userInputLocation: _searchController.text,
+      );
+      // isLoading=false;
+      if (responseModel.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                "${responseModel.error?.message}")));
+      } else {
+        Navigator.of(context).pop(responseModel);
+      }
+    } catch (ex) {
+      debugPrint(ex.toString());
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Something Went Wrong...")));
+    }
   }
 }

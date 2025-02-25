@@ -151,8 +151,10 @@ class _WeatherPageState extends State<WeatherPage> {
                                         width: 27.0,
                                       ),
                               SizedBox(width: 5.0,),
-                              Text('${weatherResponse?.location?.name ?? 'Select Location'},'
-                                  '${weatherResponse?.location?.region ?? ''}',
+                              Text(
+                                '${weatherResponse?.location?.name ?? 'Select Location'}'
+                                    '${(weatherResponse?.location?.name != null && weatherResponse?.location?.region != null) ? ', ' : ''}'
+                                    '${weatherResponse?.location?.region ?? ''}',
                                 style: TextStyle(
                                   fontSize: 20.0,
                                   fontFamily: "Blinker",
